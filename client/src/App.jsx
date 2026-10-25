@@ -96,28 +96,55 @@ function App() {
   const [authBusy, setAuthBusy] = useState(false);
 
   
+
 useEffect(() => {
-  if (!token || !user) {
-    setCompleted([]);
-    return;
-  }
-  fetch(
-    `http://localhost:5000/api/roadmap/${encodeURIComponent(selectedCareer.title)}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  )
-    .then((response) => {
+  let cancelled = false;
+
+  async function loadRoadmap() {
+    if (!token || !user) {
+      setCompleted([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://pathpilot-backend-s2ob.onrender.com/api/roadmap/${encodeURIComponent(
+          selectedCareer.title
+        )}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
       if (!response.ok) {
         throw new Error("Failed to load roadmap");
       }
-      return response.json();
-    })
-    .then((data) => {
-      setCompleted(data.completedMilestones || []);
-    })
-    .catch((error) => {
-      console.error("Error loading roadmap:", error);
-    });
-}, [selectedCareer, token, user]);
+
+      const data = await response.json();
+
+      if (!cancelled) {
+        setCompleted(
+          Array.isArray(data.completedMilestones)
+            ? data.completedMilestones
+            : []
+        );
+      }
+    } catch (error) {
+      if (!cancelled) {
+        console.error("Error loading roadmap:", error);
+      }
+    }
+  }
+
+  loadRoadmap();
+
+  return () => {
+    cancelled = true;
+  };
+}, [selectedCareer.title, token, user]);
+
 
 
   const currentRoadmap = roadmaps[selectedCareer.title] || [];
@@ -132,7 +159,7 @@ const progress =
     setAuthBusy(true);
     setAuthMessage("");
     try {
-      const response = await fetch(`http://localhost:5000/api/auth/${authMode}`, {
+      const response = await fetch(`https://pathpilot-backend-s2ob.onrender.com/api/auth/${authMode}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: authName, email: authEmail, password: authPassword }),
@@ -183,7 +210,7 @@ async function toggleMilestone(index) {
     : [...completed, index];
   setCompleted(updatedCompleted);
   try {
-    const response = await fetch("http://localhost:5000/api/roadmap", {
+    const response = await fetch("https://pathpilot-backend-s2ob.onrender.com/api/roadmap", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
